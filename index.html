@@ -1,698 +1,272 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartBasket - Euro Grocery Scanner</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SmartBasket - Shared Family Grocery</title>
+
+  <!-- Firebase Web SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #f4f6f8; color: #1f2937; padding-bottom: 90px; }
+    header { background: #10b981; color: white; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
     
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    .card { background: white; border-radius: 12px; margin: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-        .scanner-laser {
-            position: absolute;
-            left: 5%;
-            width: 90%;
-            height: 2px;
-            background: #ef4444;
-            box-shadow: 0 0 10px #ef4444, 0 0 18px #ef4444;
-            animation: scanLaser 2s infinite ease-in-out alternate;
-        }
-        @keyframes scanLaser {
-            0% { top: 15%; }
-            100% { top: 85%; }
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-    </style>
+    .list-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+    select, input, button { font-size: 14px; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; }
+    select { flex: 1; background: white; font-weight: 600; }
+    
+    .total-banner { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .total-amount { font-size: 24px; font-weight: 800; color: #059669; }
+    
+    .btn { background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-reset { background: #f3f4f6; color: #4b5563; font-size: 12px; padding: 8px 12px; margin-top: 8px; width: 100%; border-radius: 6px; border: 1px solid #d1d5db; cursor: pointer; }
+    
+    .tabs { display: flex; margin: 12px; background: #e5e7eb; border-radius: 8px; padding: 2px; }
+    .tab { flex: 1; text-align: center; padding: 8px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .tab.active { background: white; color: #10b981; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    
+    .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; background: white; }
+    .item-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
+    .checkbox.checked { background: #10b981; border-color: #10b981; color: white; }
+    .item-name { font-weight: 600; font-size: 15px; }
+    
+    .price-tag { font-weight: 700; color: #059669; background: #ecfdf5; padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #a7f3d0; }
+    .price-pending { color: #d97706; background: #fffbe3; border-color: #fde68a; font-size: 12px; }
+    
+    .action-bar { display: flex; gap: 8px; margin: 12px; }
+    
+    .scanner-fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 14px 28px; border-radius: 30px; font-size: 16px; font-weight: 700; box-shadow: 0 4px 14px rgba(16,185,129,0.4); border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; z-index: 100; }
+    .sync-badge { font-size: 11px; background: #047857; color: #a7f3d0; padding: 2px 8px; border-radius: 12px; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-full pb-28 flex flex-col justify-between">
+<body>
 
-    <div>
-        <!-- TOP HEADER -->
-        <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
-            <div class="max-w-md mx-auto flex items-center justify-between">
-                <div class="flex items-center space-x-2.5">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
-                        <i data-lucide="shopping-basket" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-extrabold text-base leading-tight tracking-tight text-white">SmartBasket</h1>
-                        <p class="text-[11px] text-slate-400 font-medium">Euro Grocery Scanner & Tracker</p>
-                    </div>
-                </div>
-                
-                <button onclick="openAddModal()" class="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-xs shadow-md shadow-brand-500/20 active:scale-95 transition">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span>Add Item</span>
-                </button>
-            </div>
-        </header>
+  <header>
+    <h1>SmartBasket <span class="sync-badge" id="syncStatus">Live Sync</span></h1>
+  </header>
 
-        <!-- SPENDING HEADER CARD -->
-        <div class="max-w-md mx-auto px-4 mt-4">
-            <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
-                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl"></div>
-                
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Total Spent (€)</span>
-                        <div class="flex items-baseline space-x-1 mt-0.5">
-                            <span class="text-3xl font-black text-brand-400">€</span>
-                            <span id="boughtTotalDisplay" class="text-4xl font-black tracking-tight text-white">0.00</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[11px] text-slate-400 block font-medium">To Buy</span>
-                        <span id="toBuyCountBadge" class="inline-block mt-1 bg-amber-500/20 text-amber-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30">0 items</span>
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-xs text-slate-300">
-                    <span id="boughtCountText" class="flex items-center text-slate-400">
-                        <i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-brand-400 mr-1.5"></i>
-                        0 items bought
-                    </span>
-                    <button onclick="moveAllToBuy()" class="text-brand-400 hover:text-brand-300 font-semibold flex items-center space-x-1 active:scale-95 transition">
-                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 mr-1"></i>
-                        <span>Reset for Next Trip</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MAIN CONTENT AREA -->
-        <main class="max-w-md mx-auto px-4 mt-5">
-            <!-- TAB CONTROLS -->
-            <div class="flex bg-slate-900 p-1 rounded-xl mb-4 text-xs font-semibold border border-slate-800">
-                <button id="tabToBuy" onclick="switchTab('to_buy')" class="flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 bg-slate-800 text-white shadow-sm">
-                    <i data-lucide="list-todo" class="w-4 h-4"></i>
-                    <span>To Buy</span>
-                    <span id="toBuyBadge" class="bg-brand-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1 font-bold">0</span>
-                </button>
-                <button id="tabBought" onclick="switchTab('bought')" class="flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 text-slate-400 hover:text-white">
-                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
-                    <span>Bought</span>
-                    <span id="boughtBadge" class="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-full ml-1 font-bold">0</span>
-                </button>
-            </div>
-
-            <!-- SEARCH BAR -->
-            <div class="relative mb-4">
-                <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                <input type="text" id="searchInput" oninput="renderLists()" placeholder="Search item or category..." class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-slate-500">
-            </div>
-
-            <!-- TO BUY LIST SECTION -->
-            <section id="toBuySection">
-                <div id="toBuyList" class="space-y-2.5"></div>
-                <div id="toBuyEmpty" class="hidden text-center py-12 px-4 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-                    <div class="w-12 h-12 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i data-lucide="shopping-bag" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-200 text-sm">Your shopping list is empty</h3>
-                    <p class="text-xs text-slate-500 mt-1 mb-4">Tap 'Add Item' or scan barcodes to start adding items.</p>
-                </div>
-            </section>
-
-            <!-- BOUGHT LIST SECTION -->
-            <section id="boughtSection" class="hidden">
-                <div id="boughtList" class="space-y-2.5"></div>
-                <div id="boughtEmpty" class="hidden text-center py-12 px-4 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-                    <div class="w-12 h-12 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i data-lucide="receipt" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-200 text-sm">No items bought yet</h3>
-                    <p class="text-xs text-slate-500 mt-1">Scan items or tap checkboxes/prices to add them to your cart.</p>
-                </div>
-            </section>
-        </main>
+  <div class="card">
+    <!-- Active List Switcher & Creator -->
+    <div class="list-selector">
+      <select id="activeListSelect" onchange="switchActiveList(this.value)">
+        <option value="Home">🏠 Home Groceries</option>
+        <option value="Trip">🚗 Trip / Vacation List</option>
+      </select>
+      <button class="btn btn-secondary" onclick="createNewList()">+ New List</button>
     </div>
 
-    <!-- FLOATING SCAN TRIGGER -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20">
-        <button onclick="openScanner()" class="flex items-center space-x-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold px-6 py-3.5 rounded-full shadow-xl shadow-brand-500/30 active:scale-95 transition-all">
-            <i data-lucide="scan-line" class="w-5 h-5"></i>
-            <span>Scan Tag / Barcode</span>
-        </button>
+    <div class="total-banner">
+      <span>Total Spent (Cart)</span>
+      <span class="total-amount" id="totalSpent">€0.00</span>
     </div>
+    <button class="btn-reset" onclick="resetForNextTrip()">🔄 Reset All Items to "To Buy"</button>
+  </div>
 
-    <!-- CAMERA SCANNER MODAL -->
-    <div id="scannerModal" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-between">
-        <div class="p-4 flex justify-between items-center text-white z-10 bg-gradient-to-b from-black/90 to-transparent">
-            <div>
-                <h2 class="font-bold text-base flex items-center">
-                    <i data-lucide="qr-code" class="w-4 h-4 text-brand-400 mr-2"></i>
-                    Scan Barcode Tag
-                </h2>
-                <p class="text-[11px] text-slate-400">Align barcode tag inside the laser frame</p>
+  <div class="action-bar">
+    <button class="btn" style="flex:1;" onclick="addNewItem()">+ Add Item to List</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabToBuy" onclick="switchTab('to_buy')">To Buy (<span id="countToBuy">0</span>)</div>
+    <div class="tab" id="tabBought" onclick="switchTab('bought')">Bought (<span id="countBought">0</span>)</div>
+  </div>
+
+  <div id="itemList" class="card" style="padding:0; overflow:hidden;"></div>
+
+  <button class="scanner-fab" onclick="scanBarcode()">
+    📷 Scan Tag / Price
+  </button>
+
+  <script>
+    // Replace with your Firebase Realtime Database URL if you created one in your console:
+    const firebaseConfig = {
+      databaseURL: "https://smartbasket-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+
+    // Shared Family Code Prompt (Links your phone and Monika's phone)
+    let familyId = localStorage.getItem('smartbasket_family_id');
+    if (!familyId) {
+      familyId = prompt("Enter a Shared Family Code (e.g. agarwal-family) so you and Monika sync the same list:", "agarwal-family") || "agarwal-family";
+      familyId = familyId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      localStorage.setItem('smartbasket_family_id', familyId);
+    }
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentListKey = localStorage.getItem('smartbasket_current_list') || 'Home';
+    let currentTab = 'to_buy';
+    let items = [];
+
+    let listRef = db.ref(`families/${familyId}/lists/${currentListKey}`);
+
+    function setupSync() {
+      if (listRef) listRef.off();
+      listRef = db.ref(`families/${familyId}/lists/${currentListKey}`);
+
+      listRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        items = data ? Object.values(data) : [];
+        render();
+      });
+    }
+
+    function saveToCloud() {
+      const updates = {};
+      items.forEach(item => {
+        updates[item.id] = item;
+      });
+      listRef.set(updates);
+    }
+
+    function switchActiveList(listName) {
+      currentListKey = listName;
+      localStorage.setItem('smartbasket_current_list', listName);
+      setupSync();
+    }
+
+    function createNewList() {
+      const name = prompt("Enter name for new list (e.g., Road Trip, Camping, Party):");
+      if (!name) return;
+      const cleanName = name.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
+      if (!cleanName) return;
+
+      const select = document.getElementById('activeListSelect');
+      let exists = Array.from(select.options).some(opt => opt.value === cleanName);
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = cleanName;
+        opt.innerText = `📋 ${cleanName}`;
+        select.appendChild(opt);
+      }
+      select.value = cleanName;
+      switchActiveList(cleanName);
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tabToBuy').classList.toggle('active', tab === 'to_buy');
+      document.getElementById('tabBought').classList.toggle('active', tab === 'bought');
+      render();
+    }
+
+    function addNewItem() {
+      const name = prompt("Enter item name (e.g. Potatoes, Milk, Snacks):");
+      if (!name || !name.trim()) return;
+      const priceStr = prompt("Enter price (€) if known, or leave blank to set at store:", "");
+      const price = (priceStr && !isNaN(parseFloat(priceStr))) ? parseFloat(priceStr) : null;
+
+      const newItem = {
+        id: 'item_' + Date.now(),
+        name: name.trim(),
+        price: price,
+        status: 'to_buy',
+        barcode: null
+      };
+
+      items.push(newItem);
+      saveToCloud();
+    }
+
+    function toggleStatus(id) {
+      const item = items.find(i => i.id === id);
+      if (item) {
+        if (item.status === 'to_buy' && (item.price === null || item.price === undefined)) {
+          setPriceManually(id);
+        } else {
+          item.status = item.status === 'to_buy' ? 'bought' : 'to_buy';
+          saveToCloud();
+        }
+      }
+    }
+
+    function setPriceManually(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      const val = prompt(`Enter price (€) for ${item.name}:`, item.price !== null ? item.price : "");
+      if (val !== null && val !== "" && !isNaN(parseFloat(val))) {
+        item.price = parseFloat(val);
+        item.status = 'bought';
+        saveToCloud();
+      }
+    }
+
+    function scanBarcode() {
+      const barcode = prompt("Scan or Enter Product Tag / Barcode:");
+      if (!barcode || !barcode.trim()) return;
+      const cleanCode = barcode.trim();
+
+      let item = items.find(i => i.barcode === cleanCode);
+      if (item) {
+        item.status = 'bought';
+        alert(`Scanned: ${item.name} (€${(item.price || 0).toFixed(2)})\nMoved to Bought list!`);
+      } else {
+        const unpricedItem = items.find(i => i.status === 'to_buy' && (i.price === null || i.price === undefined));
+        if (unpricedItem && confirm(`Link barcode to "${unpricedItem.name}" on your list?`)) {
+          const priceInput = prompt(`Enter Price (€) for ${unpricedItem.name}:`, "0.00");
+          const price = parseFloat(priceInput) || 0;
+          unpricedItem.price = price;
+          unpricedItem.barcode = cleanCode;
+          unpricedItem.status = 'bought';
+        } else {
+          const name = prompt(`New item found (${cleanCode})! Enter Name:`);
+          if (!name || !name.trim()) return;
+          const priceInput = prompt("Enter Price (€):", "0.00");
+          const price = parseFloat(priceInput) || 0;
+          items.push({ id: 'item_' + Date.now(), name: name.trim(), price: price, status: 'bought', barcode: cleanCode });
+        }
+      }
+      saveToCloud();
+    }
+
+    function resetForNextTrip() {
+      if (confirm("Reset all bought items back to 'To Buy' for your next trip?")) {
+        items.forEach(i => i.status = 'to_buy');
+        saveToCloud();
+      }
+    }
+
+    function render() {
+      const listEl = document.getElementById('itemList');
+      const filtered = items.filter(i => i.status === currentTab);
+
+      const total = items.filter(i => i.status === 'bought').reduce((sum, i) => sum + (i.price || 0), 0);
+      document.getElementById('totalSpent').innerText = `€${total.toFixed(2)}`;
+
+      document.getElementById('countToBuy').innerText = items.filter(i => i.status === 'to_buy').length;
+      document.getElementById('countBought').innerText = items.filter(i => i.status === 'bought').length;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="padding: 24px; text-align: center; color: #9ca3af;">No items in this list</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(item => `
+        <div class="list-item">
+          <div class="item-info">
+            <div class="checkbox ${item.status === 'bought' ? 'checked' : ''}" onclick="toggleStatus('${item.id}')">
+              ${item.status === 'bought' ? '✓' : ''}
             </div>
-            <button onclick="closeScanner()" class="w-9 h-9 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            <span class="item-name">${item.name}</span>
+          </div>
+          ${item.price !== null && item.price !== undefined
+            ? `<span class="price-tag" onclick="setPriceManually('${item.id}')">€${item.price.toFixed(2)}</span>`
+            : `<span class="price-tag price-pending" onclick="setPriceManually('${item.id}')">€ Pending</span>`
+          }
         </div>
+      `).join('');
+    }
 
-        <!-- Camera Viewfinder -->
-        <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden">
-            <video id="scannerVideo" class="w-full h-full object-cover" playsinline autoplay muted></video>
-            
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-64 h-64 border-2 border-brand-400/80 rounded-2xl relative shadow-2xl">
-                    <div class="scanner-laser"></div>
-                    <div class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-brand-500 rounded-tl-lg"></div>
-                    <div class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-brand-500 rounded-tr-lg"></div>
-                    <div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-brand-500 rounded-bl-lg"></div>
-                    <div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-brand-500 rounded-br-lg"></div>
-                </div>
-            </div>
-
-            <div id="scannerStatus" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-200 text-center font-medium shadow-lg">
-                Camera active. Searching for barcode...
-            </div>
-        </div>
-
-        <!-- Test Buttons -->
-        <div class="p-4 bg-slate-900 border-t border-slate-800 z-10">
-            <div class="text-center mb-2">
-                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Tap to Simulate Barcode Scans</span>
-            </div>
-            <div class="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-                <button onclick="simulateScan('8712100805118')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 rounded-xl whitespace-nowrap border border-slate-700 flex-shrink-0 flex items-center space-x-1.5">
-                    <span>🥔 Scan Tag: Potatoes (€2.10)</span>
-                </button>
-                <button onclick="simulateScan('8712100805999')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 rounded-xl whitespace-nowrap border border-slate-700 flex-shrink-0 flex items-center space-x-1.5">
-                    <span>🥛 Fresh Milk (€1.25)</span>
-                </button>
-                <button onclick="simulateScan('5449000000996')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 rounded-xl whitespace-nowrap border border-slate-700 flex-shrink-0 flex items-center space-x-1.5">
-                    <span>🥤 Cola (€1.50)</span>
-                </button>
-                <button onclick="simulateScan('9990001122334')" class="bg-amber-950/60 border border-amber-500/40 text-amber-300 text-xs py-2 px-3 rounded-xl whitespace-nowrap flex-shrink-0">
-                    <span>✨ Scan Unlisted Item</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADD/EDIT ITEM MODAL -->
-    <div id="itemModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 p-6 relative">
-            <button onclick="closeAddModal()" class="absolute right-4 top-4 text-slate-400 hover:text-white">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-
-            <h3 id="modalTitle" class="font-bold text-base text-white mb-4 flex items-center">
-                <i data-lucide="shopping-cart" class="w-5 h-5 text-brand-400 mr-2"></i> Add Grocery Item
-            </h3>
-
-            <form id="itemForm" onsubmit="handleSaveItem(event)" class="space-y-4">
-                <input type="hidden" id="itemId">
-                
-                <div>
-                    <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Item Name *</label>
-                    <input type="text" id="itemName" required placeholder="e.g. Potatoes, Avocados" class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none text-white placeholder-slate-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Price (€) <span class="text-[10px] text-amber-400 font-normal">(Optional)</span></label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">€</span>
-                            <input type="number" step="0.01" id="itemPrice" placeholder="Scan/Enter at store" class="w-full pl-8 pr-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none text-white placeholder-slate-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Category</label>
-                        <select id="itemCategory" class="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none text-white">
-                            <option value="Produce">🥬 Produce</option>
-                            <option value="Dairy">🥛 Dairy</option>
-                            <option value="Bakery">🍞 Bakery</option>
-                            <option value="Beverages">🥤 Beverages</option>
-                            <option value="Pantry">🥫 Pantry</option>
-                            <option value="Snacks">🍫 Snacks</option>
-                            <option value="Other">📦 Other</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Barcode Tag (Optional)</label>
-                    <input type="text" id="itemBarcode" placeholder="Captured on tag scan" class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none text-white placeholder-slate-500">
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Status</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center justify-center p-2.5 border border-slate-700 rounded-xl cursor-pointer text-xs font-semibold bg-slate-800/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-950/40 text-slate-300">
-                            <input type="radio" name="itemStatus" value="to_buy" checked class="hidden">
-                            <span>To Buy</span>
-                        </label>
-                        <label class="flex items-center justify-center p-2.5 border border-slate-700 rounded-xl cursor-pointer text-xs font-semibold bg-slate-800/50 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-950/40 text-slate-300">
-                            <input type="radio" name="itemStatus" value="bought" class="hidden">
-                            <span>Bought (Cart)</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="pt-2 flex gap-2">
-                    <button type="button" onclick="closeAddModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 font-bold text-slate-300 text-xs rounded-xl">Cancel</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 font-bold text-white text-xs rounded-xl shadow-md shadow-brand-500/20">Save Item</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // Sample default list (includes items with and without pre-set prices)
-        const defaultGroceries = [
-            { id: '1', name: 'Potatoes (Bag)', price: null, category: 'Produce', status: 'to_buy', barcode: '8712100805118' },
-            { id: '2', name: 'Fresh Milk 1L', price: 1.25, category: 'Dairy', status: 'to_buy', barcode: '8712100805999' },
-            { id: '3', name: 'Sparkling Cola 500ml', price: 1.50, category: 'Beverages', status: 'to_buy', barcode: '5449000000996' },
-            { id: '4', name: 'Organic Bananas', price: null, category: 'Produce', status: 'to_buy', barcode: '' },
-            { id: '5', name: 'Sourdough Bread', price: 2.80, category: 'Bakery', status: 'bought', barcode: '1110022334455' }
-        ];
-
-        let groceryList = [];
-        let currentTab = 'to_buy';
-        let mediaStream = null;
-        let barcodeDetector = null;
-        let isScanningActive = false;
-
-        window.onload = function() {
-            loadSavedItems();
-            renderLists();
-            initBarcodeDetector();
-            lucide.createIcons();
-        };
-
-        function loadSavedItems() {
-            const saved = localStorage.getItem('smartbasket_euro_items_v2');
-            if (saved) {
-                try {
-                    groceryList = JSON.parse(saved);
-                } catch(e) {
-                    groceryList = defaultGroceries;
-                }
-            } else {
-                groceryList = defaultGroceries;
-                saveItems();
-            }
-        }
-
-        function saveItems() {
-            localStorage.setItem('smartbasket_euro_items_v2', JSON.stringify(groceryList));
-            renderLists();
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            const toBuyBtn = document.getElementById('tabToBuy');
-            const boughtBtn = document.getElementById('tabBought');
-            const toBuySec = document.getElementById('toBuySection');
-            const boughtSec = document.getElementById('boughtSection');
-
-            if (tab === 'to_buy') {
-                toBuyBtn.className = "flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 bg-slate-800 text-white shadow-sm";
-                boughtBtn.className = "flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 text-slate-400 hover:text-white";
-                toBuySec.classList.remove('hidden');
-                boughtSec.classList.add('hidden');
-            } else {
-                boughtBtn.className = "flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 bg-slate-800 text-white shadow-sm";
-                toBuyBtn.className = "flex-1 py-2.5 rounded-lg transition-all text-center flex items-center justify-center space-x-2 text-slate-400 hover:text-white";
-                boughtSec.classList.remove('hidden');
-                toBuySec.classList.add('hidden');
-            }
-            renderLists();
-        }
-
-        function renderLists() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-
-            const toBuyItems = groceryList.filter(i => i.status === 'to_buy' && (i.name.toLowerCase().includes(query) || i.category.toLowerCase().includes(query)));
-            const boughtItems = groceryList.filter(i => i.status === 'bought' && (i.name.toLowerCase().includes(query) || i.category.toLowerCase().includes(query)));
-
-            const totalBoughtSum = groceryList
-                .filter(i => i.status === 'bought' && i.price !== null && !isNaN(i.price))
-                .reduce((sum, item) => sum + Number(item.price), 0);
-
-            // Update Header Display
-            document.getElementById('boughtTotalDisplay').innerText = totalBoughtSum.toFixed(2);
-            document.getElementById('toBuyBadge').innerText = groceryList.filter(i => i.status === 'to_buy').length;
-            document.getElementById('boughtBadge').innerText = groceryList.filter(i => i.status === 'bought').length;
-            document.getElementById('toBuyCountBadge').innerText = `${groceryList.filter(i => i.status === 'to_buy').length} items left`;
-            document.getElementById('boughtCountText').innerHTML = `<i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-brand-400 mr-1.5"></i>${groceryList.filter(i => i.status === 'bought').length} items bought`;
-
-            // Render To Buy List
-            const toBuyContainer = document.getElementById('toBuyList');
-            const toBuyEmpty = document.getElementById('toBuyEmpty');
-            
-            if (toBuyItems.length === 0) {
-                toBuyContainer.innerHTML = '';
-                toBuyEmpty.classList.remove('hidden');
-            } else {
-                toBuyEmpty.classList.add('hidden');
-                toBuyContainer.innerHTML = toBuyItems.map(item => createItemCardHTML(item)).join('');
-            }
-
-            // Render Bought List
-            const boughtContainer = document.getElementById('boughtList');
-            const boughtEmpty = document.getElementById('boughtEmpty');
-
-            if (boughtItems.length === 0) {
-                boughtContainer.innerHTML = '';
-                boughtEmpty.classList.remove('hidden');
-            } else {
-                boughtEmpty.classList.add('hidden');
-                boughtContainer.innerHTML = boughtItems.map(item => createItemCardHTML(item)).join('');
-            }
-
-            lucide.createIcons();
-        }
-
-        function createItemCardHTML(item) {
-            const isBought = item.status === 'bought';
-            const categoryEmoji = {
-                'Dairy': '🥛', 'Produce': '🥬', 'Bakery': '🍞',
-                'Beverages': '🥤', 'Pantry': '🥫', 'Snacks': '🍫', 'Other': '📦'
-            }[item.category] || '📦';
-
-            const hasPrice = item.price !== null && item.price !== undefined && !isNaN(item.price);
-
-            return `
-                <div class="bg-slate-900 rounded-2xl p-4 border border-slate-800/80 shadow-sm flex items-center justify-between transition-all hover:border-slate-700">
-                    <div class="flex items-center space-x-3 flex-1 min-w-0 pr-2">
-                        <button onclick="toggleItemStatus('${item.id}')" class="w-7 h-7 rounded-full border-2 ${isBought ? 'bg-brand-500 border-brand-500 text-white' : 'border-slate-700 text-transparent'} flex items-center justify-center transition-colors flex-shrink-0">
-                            <i data-lucide="check" class="w-4 h-4"></i>
-                        </button>
-                        
-                        <div class="truncate">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${isBought ? 'bg-slate-800 text-slate-500' : 'bg-brand-950/60 text-brand-300 border border-brand-500/30'}">
-                                    ${categoryEmoji} ${item.category}
-                                </span>
-                                ${item.barcode ? `<span class="text-[10px] font-mono text-slate-500 truncate"><i data-lucide="barcode" class="w-3 h-3 inline mr-0.5"></i>${item.barcode}</span>` : ''}
-                            </div>
-                            <h4 class="font-bold text-slate-100 text-xs truncate mt-1 ${isBought ? 'line-through text-slate-500' : ''}">
-                                ${escapeHtml(item.name)}
-                            </h4>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-3 flex-shrink-0">
-                        <div class="text-right">
-                            ${hasPrice ? `
-                                <button onclick="promptManualPrice('${item.id}')" class="font-extrabold text-sm text-white hover:text-brand-300">
-                                    €${Number(item.price).toFixed(2)}
-                                </button>
-                            ` : `
-                                <button onclick="promptManualPrice('${item.id}')" class="bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center space-x-1">
-                                    <i data-lucide="tag" class="w-3 h-3"></i>
-                                    <span>€ Pending</span>
-                                </button>
-                            `}
-                        </div>
-                        <div class="flex items-center space-x-1">
-                            <button onclick="editItem('${item.id}')" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center hover:bg-slate-700 hover:text-white" title="Edit Item">
-                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-                            </button>
-                            <button onclick="deleteItem('${item.id}')" class="w-8 h-8 rounded-lg bg-red-950/30 text-red-400 flex items-center justify-center hover:bg-red-900/50" title="Delete Item">
-                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        function promptManualPrice(id) {
-            const item = groceryList.find(i => i.id === id);
-            if (!item) return;
-
-            const currentVal = item.price !== null && item.price !== undefined ? item.price : '';
-            const input = prompt(`Enter Euro (€) price for "${item.name}":`, currentVal);
-            
-            if (input !== null && input.trim() !== '') {
-                const parsedPrice = parseFloat(input.replace(',', '.'));
-                if (!isNaN(parsedPrice) && parsedPrice >= 0) {
-                    item.price = parsedPrice;
-                    item.status = 'bought'; // Auto move to bought when price is captured
-                    saveItems();
-                    switchTab('bought');
-                    showToast(`Updated "${item.name}" price to €${parsedPrice.toFixed(2)} → Added to Cart!`);
-                } else {
-                    alert("Please enter a valid price number.");
-                }
-            }
-        }
-
-        function toggleItemStatus(id) {
-            const item = groceryList.find(i => i.id === id);
-            if (!item) return;
-
-            if (item.status === 'to_buy' && (item.price === null || item.price === undefined)) {
-                // If item has no price set yet, prompt for manual price
-                promptManualPrice(id);
-            } else {
-                item.status = item.status === 'to_buy' ? 'bought' : 'to_buy';
-                saveItems();
-            }
-        }
-
-        function moveAllToBuy() {
-            if (groceryList.filter(i => i.status === 'bought').length === 0) return;
-            groceryList.forEach(item => item.status = 'to_buy');
-            saveItems();
-            switchTab('to_buy');
-            showToast("All items moved back to 'To Buy' list!");
-        }
-
-        function deleteItem(id) {
-            groceryList = groceryList.filter(i => i.id !== id);
-            saveItems();
-        }
-
-        function openAddModal(prefill = {}) {
-            document.getElementById('itemId').value = prefill.id || '';
-            document.getElementById('itemName').value = prefill.name || '';
-            document.getElementById('itemPrice').value = prefill.price !== null && prefill.price !== undefined ? prefill.price : '';
-            document.getElementById('itemCategory').value = prefill.category || 'Produce';
-            document.getElementById('itemBarcode').value = prefill.barcode || '';
-            
-            const statusRadios = document.getElementsByName('itemStatus');
-            for (let radio of statusRadios) {
-                if (radio.value === (prefill.status || 'to_buy')) radio.checked = true;
-            }
-
-            document.getElementById('modalTitle').innerHTML = prefill.id ? 
-                '<i data-lucide="pencil" class="w-4 h-4 text-brand-400 mr-2 inline"></i> Edit Item' : 
-                '<i data-lucide="shopping-cart" class="w-4 h-4 text-brand-400 mr-2 inline"></i> Add Grocery Item';
-
-            document.getElementById('itemModal').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function closeAddModal() {
-            document.getElementById('itemModal').classList.add('hidden');
-            document.getElementById('itemForm').reset();
-        }
-
-        function editItem(id) {
-            const item = groceryList.find(i => i.id === id);
-            if (item) openAddModal(item);
-        }
-
-        function handleSaveItem(e) {
-            e.preventDefault();
-            const id = document.getElementById('itemId').value;
-            const name = document.getElementById('itemName').value.trim();
-            const priceVal = document.getElementById('itemPrice').value.trim();
-            const price = priceVal !== '' ? parseFloat(priceVal) : null;
-            const category = document.getElementById('itemCategory').value;
-            const barcode = document.getElementById('itemBarcode').value.trim();
-            
-            let status = 'to_buy';
-            const statusRadios = document.getElementsByName('itemStatus');
-            for (let radio of statusRadios) {
-                if (radio.checked) status = radio.value;
-            }
-
-            if (id) {
-                const index = groceryList.findIndex(i => i.id === id);
-                if (index !== -1) {
-                    groceryList[index] = { ...groceryList[index], name, price, category, barcode, status };
-                }
-            } else {
-                groceryList.push({
-                    id: Date.now().toString(),
-                    name,
-                    price,
-                    category,
-                    barcode,
-                    status
-                });
-            }
-
-            saveItems();
-            closeAddModal();
-        }
-
-        function initBarcodeDetector() {
-            if ('BarcodeDetector' in window) {
-                try {
-                    barcodeDetector = new BarcodeDetector({
-                        formats: ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
-                    });
-                } catch (e) {
-                    console.log('Native BarcodeDetector fallback initialized.');
-                }
-            }
-        }
-
-        async function openScanner() {
-            document.getElementById('scannerModal').classList.remove('hidden');
-            isScanningActive = true;
-
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                const video = document.getElementById('scannerVideo');
-                video.srcObject = mediaStream;
-                await video.play();
-
-                if (barcodeDetector) {
-                    scanFrame();
-                } else {
-                    document.getElementById('scannerStatus').innerText = "Camera active. Tap quick test barcode chips below or scan barcode.";
-                }
-            } catch (err) {
-                console.error("Camera access error:", err);
-                document.getElementById('scannerStatus').innerText = "Camera access denied. Use quick test barcode chips below.";
-            }
-        }
-
-        async function scanFrame() {
-            if (!isScanningActive) return;
-            const video = document.getElementById('scannerVideo');
-
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                try {
-                    const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        const code = barcodes[0].rawValue;
-                        handleScannedCode(code);
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Detection error:", e);
-                }
-            }
-            requestAnimationFrame(scanFrame);
-        }
-
-        function closeScanner() {
-            isScanningActive = false;
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            document.getElementById('scannerModal').classList.add('hidden');
-        }
-
-        function simulateScan(barcode) {
-            handleScannedCode(barcode);
-        }
-
-        function handleScannedCode(code) {
-            closeScanner();
-
-            // Check if item exists by barcode OR by matching pre-existing unpriced item
-            let existingItem = groceryList.find(i => i.barcode === code);
-
-            if (!existingItem) {
-                // Check if there is an unpriced item on To Buy list needing a tag link
-                const unpricedItem = groceryList.find(i => i.status === 'to_buy' && !i.barcode);
-                if (unpricedItem) {
-                    existingItem = unpricedItem;
-                    existingItem.barcode = code;
-                }
-            }
-
-            if (existingItem) {
-                // If item doesn't have a price yet, prompt to capture tag price
-                if (existingItem.price === null || existingItem.price === undefined) {
-                    const priceInput = prompt(`Scanned tag for "${existingItem.name}"!\nEnter Euro (€) price on tag:`, "2.10");
-                    if (priceInput !== null && priceInput.trim() !== '') {
-                        existingItem.price = parseFloat(priceInput.replace(',', '.')) || 0;
-                    }
-                }
-
-                existingItem.status = 'bought';
-                saveItems();
-                switchTab('bought');
-                showToast(`Scanned "${existingItem.name}" (€${existingItem.price ? existingItem.price.toFixed(2) : '0.00'}) → Moved to Cart!`);
-            } else {
-                // Completely new unlisted item scanned
-                const priceInput = prompt(`New item tag scanned (${code})!\nEnter Euro (€) price:`, "1.99");
-                const price = priceInput ? parseFloat(priceInput.replace(',', '.')) : 0;
-                
-                openAddModal({
-                    name: 'Scanned Item',
-                    price: price,
-                    category: 'Produce',
-                    barcode: code,
-                    status: 'bought'
-                });
-                showToast(`New Barcode (${code}) scanned! Verify name and price.`);
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-2 animate-bounce';
-            toast.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-brand-400"></i><span>${msg}</span>`;
-            document.body.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => toast.remove(), 3000);
-        }
-    </script>
+    // Initial setup
+    setupSync();
+  </script>
 </body>
 </html>
