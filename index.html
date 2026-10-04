@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>SmartBasket - Shared Family Grocery</title>
+  <title>SmartBasket - Euro Grocery Scanner</title>
 
+  <!-- HTML5 QR / Barcode Scanner Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <!-- Firebase Web SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: #f4f6f8; color: #1f2937; padding-bottom: 90px; }
+    body { background-color: #f4f6f8; color: #1f2937; padding-bottom: 100px; }
     header { background: #10b981; color: white; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
     
@@ -26,31 +28,41 @@
     
     .btn { background: #10b981; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
-    .btn-reset { background: #f3f4f6; color: #4b5563; font-size: 12px; padding: 8px 12px; margin-top: 8px; width: 100%; border-radius: 6px; border: 1px solid #d1d5db; cursor: pointer; }
+    .btn-small { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-scan-item { background: #0284c7; color: white; border: none; }
+    .btn-reset { background: #f3f4f6; color: #4b5563; font-size: 12px; padding: 8px 12px; margin-top: 12px; width: 100%; border-radius: 6px; border: 1px solid #d1d5db; cursor: pointer; }
     
     .tabs { display: flex; margin: 12px; background: #e5e7eb; border-radius: 8px; padding: 2px; }
     .tab { flex: 1; text-align: center; padding: 8px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .tab.active { background: white; color: #10b981; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     
-    .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; background: white; }
-    .item-info { display: flex; align-items: center; gap: 12px; flex: 1; }
-    .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
+    .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; background: white; gap: 8px; }
+    .item-info { display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden; }
+    .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; flex-shrink: 0; }
     .checkbox.checked { background: #10b981; border-color: #10b981; color: white; }
-    .item-name { font-weight: 600; font-size: 15px; }
+    .item-name { font-weight: 600; font-size: 15px; word-break: break-word; }
     
+    .price-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .price-tag { font-weight: 700; color: #059669; background: #ecfdf5; padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #a7f3d0; }
     .price-pending { color: #d97706; background: #fffbe3; border-color: #fde68a; font-size: 12px; }
-    
+    .btn-delete { background: transparent; color: #ef4444; border: none; font-size: 16px; cursor: pointer; padding: 4px; }
+
     .action-bar { display: flex; gap: 8px; margin: 12px; }
     
     .scanner-fab { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 14px 28px; border-radius: 30px; font-size: 16px; font-weight: 700; box-shadow: 0 4px 14px rgba(16,185,129,0.4); border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; z-index: 100; }
     .sync-badge { font-size: 11px; background: #047857; color: #a7f3d0; padding: 2px 8px; border-radius: 12px; }
+
+    /* Camera Modal Overlay */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 12px; padding: 16px; text-align: center; position: relative; }
+    #reader { width: 100%; margin-top: 10px; }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>SmartBasket <span class="sync-badge" id="syncStatus">Live Sync</span></h1>
+    <h1>SmartBasket <span class="sync-badge" id="syncStatus">Saved Locally</span></h1>
   </header>
 
   <div class="card">
@@ -58,7 +70,7 @@
     <div class="list-selector">
       <select id="activeListSelect" onchange="switchActiveList(this.value)">
         <option value="Home">🏠 Home Groceries</option>
-        <option value="Trip">🚗 Trip / Vacation List</option>
+        <option value="Trip">🚗 Trip List</option>
       </select>
       <button class="btn btn-secondary" onclick="createNewList()">+ New List</button>
     </div>
@@ -81,74 +93,80 @@
 
   <div id="itemList" class="card" style="padding:0; overflow:hidden;"></div>
 
-  <button class="scanner-fab" onclick="scanBarcode()">
-    📷 Scan Tag / Price
+  <button class="scanner-fab" onclick="openScanner(null)">
+    📷 General Scanner
   </button>
 
+  <!-- Scanner Modal -->
+  <div class="modal-overlay" id="scannerModal">
+    <div class="modal-content">
+      <h3 id="scannerTitle">Scan Tag / Barcode</h3>
+      <p id="scannerSub" style="font-size:12px; color:#6b7280; margin-top:4px;">Align camera over product barcode</p>
+      <div id="reader"></div>
+      <button class="btn btn-secondary" style="margin-top:12px; width:100%;" onclick="manualScanFallback()">Manual Code / Text Fallback</button>
+      <button class="btn btn-reset" style="margin-top:8px;" onclick="closeScanner()">Close Scanner</button>
+    </div>
+  </div>
+
   <script>
-    // Replace with your Firebase Realtime Database URL if you created one in your console:
-    const firebaseConfig = {
-      databaseURL: "https://smartbasket-default-rtdb.europe-west1.firebasedatabase.app"
+    // LocalStorage Keys
+    const STORAGE_KEY_LISTS = 'smartbasket_saved_lists_v2';
+    const STORAGE_KEY_ACTIVE = 'smartbasket_active_list_v2';
+
+    // Default Seed Data
+    let allLists = JSON.parse(localStorage.getItem(STORAGE_KEY_LISTS)) || {
+      'Home': [
+        { id: '1', name: 'Potatoes (2kg)', price: null, status: 'to_buy', barcode: null },
+        { id: '2', name: 'Fresh Milk 2L', price: 1.85, status: 'to_buy', barcode: '5000111001' }
+      ],
+      'Trip': [
+        { id: '3', name: 'Water Bottles (6pack)', price: 2.50, status: 'to_buy', barcode: null }
+      ]
     };
 
-    // Shared Family Code Prompt (Links your phone and Monika's phone)
-    let familyId = localStorage.getItem('smartbasket_family_id');
-    if (!familyId) {
-      familyId = prompt("Enter a Shared Family Code (e.g. agarwal-family) so you and Monika sync the same list:", "agarwal-family") || "agarwal-family";
-      familyId = familyId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      localStorage.setItem('smartbasket_family_id', familyId);
-    }
+    let currentListKey = localStorage.getItem(STORAGE_KEY_ACTIVE) || 'Home';
+    if (!allLists[currentListKey]) currentListKey = Object.keys(allLists)[0] || 'Home';
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let currentListKey = localStorage.getItem('smartbasket_current_list') || 'Home';
     let currentTab = 'to_buy';
-    let items = [];
+    let targetScanItemId = null; // Stores target item ID when scanning for a specific item
+    let html5QrCode = null;
 
-    let listRef = db.ref(`families/${familyId}/lists/${currentListKey}`);
-
-    function setupSync() {
-      if (listRef) listRef.off();
-      listRef = db.ref(`families/${familyId}/lists/${currentListKey}`);
-
-      listRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        items = data ? Object.values(data) : [];
-        render();
-      });
+    function saveAll() {
+      localStorage.setItem(STORAGE_KEY_LISTS, JSON.stringify(allLists));
+      localStorage.setItem(STORAGE_KEY_ACTIVE, currentListKey);
+      render();
     }
 
-    function saveToCloud() {
-      const updates = {};
-      items.forEach(item => {
-        updates[item.id] = item;
+    function getActiveItems() {
+      return allLists[currentListKey] || [];
+    }
+
+    function updateSelectListUI() {
+      const select = document.getElementById('activeListSelect');
+      select.innerHTML = '';
+      Object.keys(allLists).forEach(key => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.innerText = `📋 ${key}`;
+        if (key === currentListKey) opt.selected = true;
+        select.appendChild(opt);
       });
-      listRef.set(updates);
     }
 
     function switchActiveList(listName) {
       currentListKey = listName;
-      localStorage.setItem('smartbasket_current_list', listName);
-      setupSync();
+      saveAll();
     }
 
     function createNewList() {
-      const name = prompt("Enter name for new list (e.g., Road Trip, Camping, Party):");
-      if (!name) return;
-      const cleanName = name.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
-      if (!cleanName) return;
-
-      const select = document.getElementById('activeListSelect');
-      let exists = Array.from(select.options).some(opt => opt.value === cleanName);
-      if (!exists) {
-        const opt = document.createElement('option');
-        opt.value = cleanName;
-        opt.innerText = `📋 ${cleanName}`;
-        select.appendChild(opt);
+      const name = prompt("Enter name for new list (e.g. Summer Trip, Party):");
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      if (!allLists[cleanName]) {
+        allLists[cleanName] = [];
       }
-      select.value = cleanName;
-      switchActiveList(cleanName);
+      currentListKey = cleanName;
+      saveAll();
     }
 
     function switchTab(tab) {
@@ -159,83 +177,169 @@
     }
 
     function addNewItem() {
-      const name = prompt("Enter item name (e.g. Potatoes, Milk, Snacks):");
+      const name = prompt("Enter item name (e.g., Bread, Milk, Apples):");
       if (!name || !name.trim()) return;
-      const priceStr = prompt("Enter price (€) if known, or leave blank to set at store:", "");
+      const priceStr = prompt("Enter estimated price (€) if known, or leave blank:", "");
       const price = (priceStr && !isNaN(parseFloat(priceStr))) ? parseFloat(priceStr) : null;
 
-      const newItem = {
+      const items = getActiveItems();
+      items.push({
         id: 'item_' + Date.now(),
         name: name.trim(),
         price: price,
         status: 'to_buy',
         barcode: null
-      };
+      });
+      saveAll();
+    }
 
-      items.push(newItem);
-      saveToCloud();
+    function deleteItem(id) {
+      if (confirm("Delete this item from list?")) {
+        allLists[currentListKey] = getActiveItems().filter(i => i.id !== id);
+        saveAll();
+      }
     }
 
     function toggleStatus(id) {
+      const items = getActiveItems();
       const item = items.find(i => i.id === id);
       if (item) {
         if (item.status === 'to_buy' && (item.price === null || item.price === undefined)) {
           setPriceManually(id);
         } else {
           item.status = item.status === 'to_buy' ? 'bought' : 'to_buy';
-          saveToCloud();
+          saveAll();
         }
       }
     }
 
     function setPriceManually(id) {
+      const items = getActiveItems();
       const item = items.find(i => i.id === id);
       if (!item) return;
       const val = prompt(`Enter price (€) for ${item.name}:`, item.price !== null ? item.price : "");
       if (val !== null && val !== "" && !isNaN(parseFloat(val))) {
         item.price = parseFloat(val);
         item.status = 'bought';
-        saveToCloud();
+        saveAll();
       }
     }
 
-    function scanBarcode() {
-      const barcode = prompt("Scan or Enter Product Tag / Barcode:");
-      if (!barcode || !barcode.trim()) return;
-      const cleanCode = barcode.trim();
+    // --- SCANNER FUNCTIONS ---
 
-      let item = items.find(i => i.barcode === cleanCode);
-      if (item) {
-        item.status = 'bought';
-        alert(`Scanned: ${item.name} (€${(item.price || 0).toFixed(2)})\nMoved to Bought list!`);
+    function openScanner(itemId) {
+      targetScanItemId = itemId;
+      const modal = document.getElementById('scannerModal');
+      const title = document.getElementById('scannerTitle');
+      const sub = document.getElementById('scannerSub');
+
+      const items = getActiveItems();
+      if (targetScanItemId) {
+        const item = items.find(i => i.id === targetScanItemId);
+        title.innerText = `Scan for "${item ? item.name : 'Item'}"`;
+        sub.innerText = "Scan product tag to set price & move to Bought";
       } else {
-        const unpricedItem = items.find(i => i.status === 'to_buy' && (i.price === null || i.price === undefined));
-        if (unpricedItem && confirm(`Link barcode to "${unpricedItem.name}" on your list?`)) {
-          const priceInput = prompt(`Enter Price (€) for ${unpricedItem.name}:`, "0.00");
-          const price = parseFloat(priceInput) || 0;
-          unpricedItem.price = price;
-          unpricedItem.barcode = cleanCode;
-          unpricedItem.status = 'bought';
-        } else {
-          const name = prompt(`New item found (${cleanCode})! Enter Name:`);
-          if (!name || !name.trim()) return;
-          const priceInput = prompt("Enter Price (€):", "0.00");
-          const price = parseFloat(priceInput) || 0;
-          items.push({ id: 'item_' + Date.now(), name: name.trim(), price: price, status: 'bought', barcode: cleanCode });
+        title.innerText = "General Scanner";
+        sub.innerText = "Scan any item to check off or add to list";
+      }
+
+      modal.classList.add('active');
+
+      // Initialize HTML5 QR Code Scanner
+      if (window.Html5Qrcode) {
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            onCodeScanned(decodedText);
+            closeScanner();
+          },
+          (errorMessage) => { /* ignore frame errors */ }
+        ).catch(err => {
+          console.warn("Camera access failed or unavailable, fallback active.", err);
+        });
+      }
+    }
+
+    function closeScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          html5QrCode = null;
+        }).catch(() => {});
+      }
+      document.getElementById('scannerModal').classList.remove('active');
+    }
+
+    function manualScanFallback() {
+      const code = prompt("Enter or paste Barcode / Tag ID:");
+      if (code) {
+        onCodeScanned(code.trim());
+      }
+      closeScanner();
+    }
+
+    function onCodeScanned(barcode) {
+      const items = getActiveItems();
+
+      // Case 1: Scanning for a specific item on the list
+      if (targetScanItemId) {
+        const item = items.find(i => i.id === targetScanItemId);
+        if (item) {
+          const priceStr = prompt(`Scanned tag for "${item.name}"!\nEnter Price (€):`, item.price || "0.00");
+          const price = parseFloat(priceStr) || 0;
+          item.price = price;
+          item.barcode = barcode;
+          item.status = 'bought';
+          alert(`Success! "${item.name}" (€${price.toFixed(2)}) moved to Bought list.`);
+          saveAll();
+          return;
         }
       }
-      saveToCloud();
+
+      // Case 2: General scan - check if barcode already matches an item
+      let matchedItem = items.find(i => i.barcode === barcode);
+      if (matchedItem) {
+        matchedItem.status = 'bought';
+        alert(`Found "${matchedItem.name}" (€${(matchedItem.price || 0).toFixed(2)})! Moved to Bought.`);
+      } else {
+        // Case 3: Match an unpriced item on the "To Buy" list
+        const unpricedItem = items.find(i => i.status === 'to_buy' && (i.price === null || i.price === undefined));
+        if (unpricedItem && confirm(`Assign scanned barcode to "${unpricedItem.name}"?`)) {
+          const priceStr = prompt(`Enter Price (€) for "${unpricedItem.name}":`, "0.00");
+          unpricedItem.price = parseFloat(priceStr) || 0;
+          unpricedItem.barcode = barcode;
+          unpricedItem.status = 'bought';
+        } else {
+          // Case 4: Brand new item not on list
+          const name = prompt(`Scanned new barcode (${barcode})!\nEnter Item Name:`);
+          if (!name || !name.trim()) return;
+          const priceStr = prompt("Enter Price (€):", "0.00");
+          items.push({
+            id: 'item_' + Date.now(),
+            name: name.trim(),
+            price: parseFloat(priceStr) || 0,
+            status: 'bought',
+            barcode: barcode
+          });
+        }
+      }
+      saveAll();
     }
 
     function resetForNextTrip() {
-      if (confirm("Reset all bought items back to 'To Buy' for your next trip?")) {
+      if (confirm("Move all bought items back to 'To Buy' for your next trip?")) {
+        const items = getActiveItems();
         items.forEach(i => i.status = 'to_buy');
-        saveToCloud();
+        saveAll();
       }
     }
 
     function render() {
+      updateSelectListUI();
       const listEl = document.getElementById('itemList');
+      const items = getActiveItems();
       const filtered = items.filter(i => i.status === currentTab);
 
       const total = items.filter(i => i.status === 'bought').reduce((sum, i) => sum + (i.price || 0), 0);
@@ -257,16 +361,22 @@
             </div>
             <span class="item-name">${item.name}</span>
           </div>
-          ${item.price !== null && item.price !== undefined
-            ? `<span class="price-tag" onclick="setPriceManually('${item.id}')">€${item.price.toFixed(2)}</span>`
-            : `<span class="price-tag price-pending" onclick="setPriceManually('${item.id}')">€ Pending</span>`
-          }
+          <div class="price-actions">
+            ${currentTab === 'to_buy' ? `
+              <button class="btn btn-small btn-scan-item" onclick="openScanner('${item.id}')">📷 Scan Tag</button>
+            ` : ''}
+            ${item.price !== null && item.price !== undefined
+              ? `<span class="price-tag" onclick="setPriceManually('${item.id}')">€${item.price.toFixed(2)}</span>`
+              : `<span class="price-tag price-pending" onclick="setPriceManually('${item.id}')">€ Pending</span>`
+            }
+            <button class="btn-delete" onclick="deleteItem('${item.id}')">🗑️</button>
+          </div>
         </div>
       `).join('');
     }
 
-    // Initial setup
-    setupSync();
+    // Initial render call
+    render();
   </script>
 </body>
 </html>
